@@ -1,83 +1,127 @@
 ﻿using System;
 using System.IO;
-using System.IO.Compression;
+using System.Xml.Serialization;
 
-class Program
+namespace AnimalSerialization
 {
-    static void Main(string[] args)
+    public class MyAttribute : Attribute
     {
-        Console.Write("Введите путь для поиска: ");
-        string searchPath = Console.ReadLine();
-
-        Console.Write("Введите имя файла для поиска: ");
-        string fileName = Console.ReadLine();
-
-        // Поиск файла
-        string filePath = FindFile(searchPath, fileName);
-
-        if (filePath != null)
+        public string Comment { get; set; }
+        MyAttribute() { }
+        public MyAttribute(string Comment)
         {
-            Console.WriteLine($"Файл найден: {filePath}");
-            Console.WriteLine("Содержимое файла:");
-
-            // Вывод содержимого файла на консоль
-            try
-            {
-                using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    string content = reader.ReadToEnd();
-                    Console.WriteLine(content);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при чтении файла: {ex.Message}");
-            }
-
-            // Сжатие файла
-            Console.Write("Хотите сжать файл? (y/n): ");
-            if (Console.ReadLine().ToLower() == "y")
-            {
-                string compressedFilePath = CompressFile(filePath);
-                Console.WriteLine($"Файл сжат и сохранен как: {compressedFilePath}");
-            }
-        }
-        else
-        {
-            Console.WriteLine("Файл не найден.");
+            this.Comment = Comment;
         }
     }
 
-    static string FindFile(string path, string fileName)
+    [MyAttribute("Классификация животных(травоядные, хищники, всеядные")]
+    public enum eClassificationAnimal
     {
-        try
-        {
-            // Поиск файла во всех поддиректориях
-            foreach (string file in Directory.GetFiles(path, fileName, SearchOption.AllDirectories))
-            {
-                return file; // Возвращаем первый найденный файл
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка при поиске файла: {ex.Message}");
-        }
-
-        return null; // Если файл не найден
+        Herbivores,
+        Carnivores,
+        Omnivores
     }
 
-    static string CompressFile(string filePath)
+    [MyAttribute("Классификация еды(мясо, растения, всё")]
+    public enum eFavouriteFood
     {
-        string compressedFilePath = Path.ChangeExtension(filePath, ".zip");
+        Meat,
+        Plants,
+        Everything
+    }
 
-        using (FileStream originalFileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
-        using (FileStream compressedFileStream = File.Create(compressedFilePath))
-        using (GZipStream compressionStream = new GZipStream(compressedFileStream, CompressionMode.Compress))
+    [MyAttribute("Родительский класс Animal ")]
+    [XmlInclude(typeof(Cow))]
+    [XmlInclude(typeof(Lion))]
+    [XmlInclude(typeof(Pig))]
+    public abstract class Animal
+    {
+        public string Country { get; set; }
+        public string HideFromOtherAnimals { get; set; }
+        public string Name { get; set; }
+        public string WhatAnimal { get; set; }
+        public eClassificationAnimal Classifications { get; set; }
+        public eFavouriteFood FavouriteFood { get; set; }
+
+        public Animal() { } // Пустой конструктор для сериализации
+
+        public Animal(string country, string hideFromOtherAnimals, string name, string whatAnimal, eClassificationAnimal classifications, eFavouriteFood favouriteFood)
         {
-            originalFileStream.CopyTo(compressionStream);
+            Country = country;
+            HideFromOtherAnimals = hideFromOtherAnimals;
+            Name = name;
+            WhatAnimal = whatAnimal;
+            Classifications = classifications;
+            FavouriteFood = favouriteFood;
         }
 
-        return compressedFilePath;
+        public abstract void SayHello();
+    }
+
+    [MyAttribute("Класс коровы производный от Animal")]
+    public class Cow : Animal
+    {
+        public Cow() { } // Пустой конструктор для сериализации
+
+        public Cow(string country, string hideFromOtherAnimals, string name, string whatAnimal, eClassificationAnimal classifications, eFavouriteFood favouriteFood)
+            : base(country, hideFromOtherAnimals, name, whatAnimal, classifications, favouriteFood) { }
+
+        public override void SayHello() { Console.WriteLine("ММУУУУУУУУУУУ!!! Hello"); }
+    }
+
+    [MyAttribute("Класс льва производный от Animal")]
+    public class Lion : Animal
+    {
+        public Lion() { } // Пустой конструктор для сериализации
+
+        public Lion(string country, string hideFromOtherAnimals, string name, string whatAnimal, eClassificationAnimal classifications, eFavouriteFood favouriteFood)
+            : base(country, hideFromOtherAnimals, name, whatAnimal, classifications, favouriteFood) { }
+
+        public override void SayHello() { Console.WriteLine("РРРРРРРРРРРРрр!!!"); }
+    }
+
+    [MyAttribute("Класс свиньи производный от Animal")]
+    public class Pig : Animal
+    {
+        public Pig() { } // Пустой конструктор для сериализации
+
+        public Pig(string country, string hideFromOtherAnimals, string name, string whatAnimal, eClassificationAnimal classifications, eFavouriteFood favouriteFood)
+            : base(country, hideFromOtherAnimals, name, whatAnimal, classifications, favouriteFood) { }
+
+        public override void SayHello() { Console.WriteLine("ХРЮюююю ХРЮЮЮЮЮ!!!"); }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            // Создание экземпляра класса Animal (в данном случае Cow)
+            Animal myAnimal = new Cow("Россия", "Да", "Милка", "Корова", eClassificationAnimal.Herbivores, eFavouriteFood.Plants);
+
+            // Сериализация в XML
+            XmlSerializer serializer = new XmlSerializer(typeof(Cow));
+            using (FileStream stream = new FileStream("animal.xml", FileMode.Create))
+            {
+                serializer.Serialize(stream, myAnimal);
+            }
+
+            Console.WriteLine("Сериализация завершена. Объект сохранен в animal.xml.");
+
+            // Десериализация из XML
+            Animal deserializedAnimal;
+            using (FileStream stream = new FileStream("animal.xml", FileMode.Open))
+            {
+                deserializedAnimal = (Animal)serializer.Deserialize(stream);
+            }
+
+            // Вывод полученного объекта на консоль
+            Console.WriteLine($"Страна: {deserializedAnimal.Country}");
+            Console.WriteLine($"Скрывается от других животных: {deserializedAnimal.HideFromOtherAnimals}");
+            Console.WriteLine($"Имя: {deserializedAnimal.Name}");
+            Console.WriteLine($"Что это за животное: {deserializedAnimal.WhatAnimal}");
+            Console.WriteLine($"Классификация: {deserializedAnimal.Classifications}");
+            Console.WriteLine($"Любимая еда: {deserializedAnimal.FavouriteFood}");
+            deserializedAnimal.SayHello();
+        }
     }
 }
